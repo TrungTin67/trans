@@ -1,0 +1,4 @@
+cis_checker: "Windows-2019-CIS-Audit.zip"
+binary_tmpdir_windows: C:\Windows\Temp\
+unzip_tmpdir_windows: C:\Windows\Temp\Windows-2019-CIS-Audit\
+host_folder_getreport: /home/audit/CIS_with_Ansible/CIS_report/{{ inventory_hostname }}.json
