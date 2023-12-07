@@ -1,0 +1,57 @@
+- name: Check if folder exists
+  win_stat:
+    path: "{{ unzip_tmpdir_windows }}"
+  register: folder_stat
+  ignore_errors: true
+
+- name: Check if file exists
+  win_stat:
+    path: "{{ cis_checker }}"
+  register: file_stat
+  ignore_errors: true
+
+- name: Remove folder if exists
+  win_file:
+    path: "{{ unzip_tmpdir_windows }}"
+    state: absent
+  when: folder_stat.stat.exists
+
+- name: Remove file if exists
+  win_file:
+    path: "{{ cis_checker }}"
+    state: absent
+  when: file_stat.stat.exists
+
+- name: Copy CIS_Audit.zip
+  ansible.builtin.copy:
+    src: "{{ cis_checker }}" 
+    dest: "{{ binary_tmpdir_windows }}\\{{ cis_checker }}"
+
+- name: Unzip CIS_Audit
+  become_method: runas
+  win_shell: |
+    Expand-Archive -Path "{{ binary_tmpdir_windows }}\\{{ cis_checker }}" -DestinationPath "{{ binary_tmpdir_windows }}"
+  vars:
+    ansible_shell_type: powershell
+    ansible_shell_executable: powershell.exe
+
+- name: Run script checker
+  become_method: runas
+  win_shell: |
+    .\run_audit.ps1 -outfile "{{unzip_tmpdir_windows}}\\report.json"
+  args:
+    chdir: "{{ unzip_tmpdir_windows }}"
+    ansible_shell_type: powershell
+    ansible_shell_executable: powershell.exe
+
+- name: Get report file to Host
+  fetch:
+    src: "{{ unzip_tmpdir_windows }}\\report.json"
+    dest: "{{ host_folder_getreport }}"
+    flat: yes
+
+- name: Clean after checked
+  become_method: runas
+  win_shell:
+    Remove-Item -Path "{{ unzip_tmpdir_windows }}" -Recurse -Force |
+    Remove-Item -Path "{{ cis_checker }}" -Recurse -Force
